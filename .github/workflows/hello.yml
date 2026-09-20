@@ -1,4 +1,4 @@
-name: Checkout Demo
+name: Python Dependencies
 
 on:
   push:
@@ -10,7 +10,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: pwd
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - run: ls -la
-      - run: cat test.md
+      - run: pip install -r requirements.txt
+
+      - run: python --version
