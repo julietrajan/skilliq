@@ -13,3 +13,4 @@ jobs:
       - run: pwd
 
       - run: ls -la
+      - run: cat README.md
