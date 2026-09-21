@@ -1,69 +1,55 @@
-"""
-Travel Recommendation Agent using Microsoft Agent Framework
-with Azure AI Foundry (FoundryChatClient).
-"""
+"""A small Streamlit chat simulator for deployment testing."""
 
-import os
-from dotenv import load_dotenv
-from agent_framework import Agent
-from agent_framework.foundry import FoundryChatClient
-from azure.identity import AzureCliCredential, DefaultAzureCredential, ChainedTokenCredential
+from collections.abc import Iterator
 
-load_dotenv()
-
-_SYSTEM_INSTRUCTIONS = """
-You are an expert travel advisor. When a user asks for travel recommendations,
-you provide:
-- Top destination suggestions based on their interests, budget, or travel style
-- Best time to visit each destination
-- Must-see attractions and local experiences
-- Practical travel tips (visa, currency, safety, transport)
-- Estimated budget range where helpful
-
-Keep responses friendly, concise, and well-structured with clear sections.
-If the user is vague, ask one focused clarifying question before recommending.
-"""
+import streamlit as st
 
 
-def build_agent() -> Agent:
-    """Create and return a configured travel recommendation Agent."""
-    endpoint = os.environ.get("FOUNDRY_PROJECT_ENDPOINT", "")
-    model = os.environ.get("FOUNDRY_MODEL", "gpt-5.4")
+def create_response(user_message: str) -> str:
+    """Create a deterministic local response without calling an AI service."""
+    return f'Test chat reply: You said, "{user_message.strip()}"'
 
-    if not endpoint:
-        raise ValueError(
-            "FOUNDRY_PROJECT_ENDPOINT is not set. "
-            "Add it to your .env file or environment variables."
+
+def stream_response(response: str) -> Iterator[str]:
+    """Yield a response one word at a time for the chat UI."""
+    words = response.split()
+    for index, word in enumerate(words):
+        separator = " " if index < len(words) - 1 else ""
+        yield f"{word}{separator}"
+
+
+def main() -> None:
+    """Render the Streamlit chat application."""
+    st.set_page_config(page_title="Test Chat", page_icon="💬")
+    st.title("Test Chat")
+    st.caption("A local chat simulator for Azure deployment testing.")
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    if st.sidebar.button("Clear chat"):
+        st.session_state.messages = []
+        st.rerun()
+
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    if user_message := st.chat_input("Type a message"):
+        st.session_state.messages.append(
+            {"role": "user", "content": user_message}
+        )
+        with st.chat_message("user"):
+            st.markdown(user_message)
+
+        response = create_response(user_message)
+        with st.chat_message("assistant"):
+            displayed_response = st.write_stream(stream_response(response))
+
+        st.session_state.messages.append(
+            {"role": "assistant", "content": displayed_response}
         )
 
-    # Try AzureCliCredential first (local dev), fall back to DefaultAzureCredential
-    credential = ChainedTokenCredential(
-        AzureCliCredential(),
-        DefaultAzureCredential(),
-    )
 
-    client = FoundryChatClient(
-        project_endpoint=endpoint,
-        model=model,
-        credential=credential,
-    )
-
-    agent = Agent(
-        client=client,
-        name="TravelAdvisorAgent",
-        instructions=_SYSTEM_INSTRUCTIONS,
-    )
-    return agent
-
-
-async def get_recommendation(agent: Agent, user_message: str) -> str:
-    """Send a message to the agent and return the response text."""
-    result = await agent.run(user_message)
-    return str(result)
-
-
-async def stream_recommendation(agent: Agent, user_message: str):
-    """Yield response chunks for streaming output."""
-    async for chunk in agent.run(user_message, stream=True):
-        if chunk.text:
-            yield chunk.text
+if __name__ == "__main__":
+    main()
