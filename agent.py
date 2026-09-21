@@ -1,4 +1,4 @@
-"""A small Streamlit chat simulator for deployment testing."""
+"""A small Streamlit chat simulator for deployment testing. Testing"""
 
 from collections.abc import Iterator
 
